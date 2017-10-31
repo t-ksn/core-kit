@@ -1,8 +1,9 @@
-package core
+package corekit
 
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -36,7 +37,7 @@ type Options struct {
 	version          string
 	dependenciesInfo map[string]func() interface{}
 	params           map[string]string
-	address          string
+	port             int
 	certFile         string
 	keyFile          string
 	serveMux         ServeMux
@@ -68,9 +69,9 @@ func Param(name, val string) Option {
 	}
 }
 
-func Address(address string) Option {
+func Port(port int) Option {
 	return func(o *Options) {
-		o.address = address
+		o.port = port
 	}
 }
 
@@ -163,10 +164,10 @@ func (s *service) Stream(path string, handler StreamAPIHandler) {
 }
 
 func (s *service) Run() {
-	s.options.logger("[INFO] Start listening address %v\n", s.options.address)
+	s.options.logger("[INFO] Start listening address :%v\n", s.options.port)
 
 	server := http.Server{
-		Addr:    s.options.address,
+		Addr:    fmt.Sprint(":", s.options.port),
 		Handler: s.options.serveMux,
 	}
 

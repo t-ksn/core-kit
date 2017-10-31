@@ -1,4 +1,4 @@
-package core
+package corekit
 
 import (
 	"net/http"
