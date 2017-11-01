@@ -12,33 +12,33 @@ import (
 	"github.com/t-ksn/core-kit/apierror"
 )
 
-type Doer interface {
+type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
-type HTTPClient struct {
-	Doer           Doer
+type VChatClient struct {
+	Client         HTTPClient
 	ServiceAddress string
 }
 
-func (c *HTTPClient) Send(ctx context.Context, method string, url string, payload interface{}, respObj interface{}) error {
+func (c *VChatClient) Send(ctx context.Context, method string, url string, payload interface{}, respObj interface{}) error {
 	var reqBody []byte
 	var err error
 
 	if payload != nil {
 		reqBody, err = json.Marshal(payload)
 		if err != nil {
-			return errors.Wrap(err, "HTTPClient.Send [JSON marshal payload]")
+			return errors.Wrap(err, "VChatClient.Send [JSON marshal payload]")
 		}
 	}
 	req, err := http.NewRequest(method, fmt.Sprint(c.ServiceAddress, url), bytes.NewReader(reqBody))
 	if err != nil {
-		return errors.Wrapf(err, "HTTPClient.Send [Method: %s Path: %s ]", method, url)
+		return errors.Wrapf(err, "VChatClient.Send [Method: %s Path: %s ]", method, url)
 	}
 	req.Header.Add("content-type", "application/json")
 
-	resp, err := c.getDoer().Do(req)
+	resp, err := c.getHTTPClient().Do(req)
 	if err != nil {
-		return errors.Wrapf(err, "HTTPClient.Send [Send request]")
+		return errors.Wrapf(err, "VChatClient.Send [Send request]")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
@@ -46,14 +46,14 @@ func (c *HTTPClient) Send(ctx context.Context, method string, url string, payloa
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return errors.Wrapf(err, "HTTPClient.Send [ReadBody (Method: %s Path: %s Body: %s)]", method, url, reqBody)
+		return errors.Wrapf(err, "VChatClient.Send [ReadBody (Method: %s Path: %s Body: %s)]", method, url, reqBody)
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 { // http status code seccess
 		var verr apierror.APIError
 		err = json.Unmarshal(body, &verr)
 		if err != nil {
-			return errors.Wrapf(err, "CardsServiceClient.Send [UnmarshalResponseErr(status code: %v body: %s)]", resp.StatusCode, body)
+			return errors.Wrapf(err, "VChatClient.Send [UnmarshalResponseErr(status code: %v body: %s)]", resp.StatusCode, body)
 		}
 		verr.StatusCode = resp.StatusCode
 		return verr
@@ -65,14 +65,14 @@ func (c *HTTPClient) Send(ctx context.Context, method string, url string, payloa
 
 	err = json.Unmarshal(body, respObj)
 	if err != nil {
-		return errors.Wrapf(err, "CardsServiceClient.Send [UnmarshalResponseErr(status code: %v body: %s)]", resp.StatusCode, body)
+		return errors.Wrapf(err, "VChatClient.Send [UnmarshalResponseErr(status code: %v body: %s)]", resp.StatusCode, body)
 	}
 	return nil
 }
 
-func (c *HTTPClient) getDoer() Doer {
-	if c.Doer == nil {
+func (c *VChatClient) getHTTPClient() HTTPClient {
+	if c.Client == nil {
 		return http.DefaultClient
 	}
-	return c.Doer
+	return c.Client
 }
